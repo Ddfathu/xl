@@ -1,6 +1,6 @@
-<pre>// app/routers/mainRouter.js
+// app/routers/mainRouter.js
 
-import { AuthInstance } from '../service/auth.js';
+import AuthInstance from '../service/auth.js';
 import { handleRequestOtp, handleSubmitOtp, handleGetAccounts, handleSwitchAccount, handleDeleteAccount } from '../menus/account.js';
 import { getFamilyPlanDashboard, executeChangeMember, executeRemoveMember, executeSetQuotaLimit } from '../menus/famplan.js';
 import { purchaseByFamily, purchaseNTimes, purchaseNTimesByOptionCode } from '../menus/purchase.js';
@@ -39,6 +39,110 @@ export async function mainRouter(request, env) {
   };
 
   try {
+    // =========================================================================
+    // UI FRONTEND SEDERHANA UNTUK ROOT PATH (/)
+    // =========================================================================
+    if (path === "/" && method === "GET") {
+      const htmlUi = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gateway Dashboard</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+    h2 { color: #333; margin-top: 0; }
+    input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+    button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background 0.3s; }
+    button:hover { background-color: #004494; }
+    #msg { margin-top: 15px; font-size: 14px; color: #d9534f; word-break: break-all; }
+    .success { color: #5cb85c !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>XL Bypass Login</h2>
+    
+    <div id="step-phone">
+      <input type="text" id="phone" placeholder="Nomor HP (0819...)">
+      <button onclick="reqOtp()">Kirim OTP</button>
+    </div>
+
+    <div id="step-otp" style="display: none;">
+      <input type="text" id="otp" placeholder="Masukkan 6 Digit OTP">
+      <button onclick="subOtp()">Login Sekarang</button>
+    </div>
+
+    <div id="msg"></div>
+  </div>
+
+  <script>
+    async function reqOtp() {
+      const phone = document.getElementById('phone').value;
+      const msg = document.getElementById('msg');
+      if(!phone) return msg.innerText = "Isi nomor HP dulu bos!";
+      
+      msg.innerText = "Mengirim permintaan OTP...";
+      msg.className = "";
+      
+      try {
+        const res = await fetch('/api/auth/request-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone_number: phone })
+        });
+        const data = await res.json();
+        
+        if(res.ok || data.status === "success" || data.status === "SUCCESS" || data.status === true) {
+            msg.innerText = "OTP berhasil dikirim ke nomor lu!";
+            msg.className = "success";
+            document.getElementById('step-phone').style.display = 'none';
+            document.getElementById('step-otp').style.display = 'block';
+        } else {
+            msg.innerText = "Gagal: " + JSON.stringify(data);
+        }
+      } catch (err) {
+        msg.innerText = "Error jaringan: " + err.message;
+      }
+    }
+
+    async function subOtp() {
+      const phone = document.getElementById('phone').value;
+      const otp = document.getElementById('otp').value;
+      const msg = document.getElementById('msg');
+      if(!otp) return msg.innerText = "Isi OTP dulu bos!";
+      
+      msg.innerText = "Memverifikasi OTP...";
+      msg.className = "";
+      
+      try {
+        const res = await fetch('/api/auth/submit-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone_number: phone, otp: otp })
+        });
+        const data = await res.json();
+        
+        if(res.ok || data.status === "success" || data.status === "SUCCESS" || data.status === true) {
+            msg.innerText = "Login Berhasil! Session tersimpan di KV.";
+            msg.className = "success";
+            // Disini lu bisa nambahin redirect ke dashboard panel lu nanti
+        } else {
+            msg.innerText = "Gagal: " + JSON.stringify(data);
+        }
+      } catch (err) {
+        msg.innerText = "Error jaringan: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>`;
+      return new Response(htmlUi, {
+        headers: { 'Content-Type': 'text/html;charset=UTF-8' }
+      });
+    }
+
     // =========================================================================
     // SECTION A: AUTHENTICATION & MANAGEMENT AKUN (Tanpa Cek Sesi)
     // =========================================================================
@@ -310,4 +414,4 @@ export async function mainRouter(request, env) {
     console.error("[Router Catch Block Error]:", error);
     return jsonResponse({ error: "Terjadi kesalahan internal pada Router Pemeta Menu.", details: error.message }, 500);
   }
-}</pre>
+}
